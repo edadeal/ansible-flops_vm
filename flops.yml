@@ -1,0 +1,68 @@
+---
+
+- name: create vm
+  gather_facts: no
+  become: False
+  hosts: localhost
+  tasks:
+    - name: create 3 host
+      flops_vm:
+        credentials: "{{ flops_credentials }}"
+        name: "{{ item }}"
+        cpu: 4
+        memory: 3
+        disk: 30
+      with_sequence: start=1 end=3 format=hostname-0%d.example.ru
+      register: hosts_info
+      notify: update hostfile loop
+      tags: group
+
+    - name: host_info
+      meta: flush_handlers
+
+    - name: create host with private ip
+      flops_vm:
+        credentials: "{{ flops_credentials }}"
+        name: host-private.example.ru
+        memory: 2
+        disk: 20
+        cpu: 2
+      register: host_info
+      notify: update hostfile
+      tags: private
+
+    - name: host_info
+      meta: flush_handlers
+
+    - name: create host with public ip
+      flops_vm:
+        credentials: "{{ flops_credentials }}"
+        name: host-public.example.ru
+        memory: 2
+        disk: 20
+        cpu: 2
+        ip_count: 1
+      register: host_info
+      notify: update hostfile
+      tags: public
+
+    - name: host_info
+      meta: flush_handlers
+
+  handlers:
+    - name: update hostfile
+      blockinfile:
+        path: hosts.ini
+        block: "{{ host_info.msg.name }}
+                ansible_host={% if host_info.msg.ip_count | length > 0 %}{{ host_info.msg.ip_count[0] }}
+              {% else %}{{ host_info.msg.privateIpAddress }}
+              {% endif %}"
+        state: present
+        insertbefore: BOF
+
+    - name: update hostfile loop
+      blockinfile:
+        path: hosts.ini
+        block: "{% for server in hosts_info.results %}{{ server.msg.name }} ansible_host={% if server.msg.ip_count | length > 0 %}{{ server.msg.ip_count[0] }}\n{% else %}{{ server.msg.privateIpAddress }}\n{% endif %}{% endfor %}"
+        state: present
+        insertbefore: BOF

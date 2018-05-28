@@ -1,0 +1,9 @@
+flops_credentials:
+  flops_client_id: 1
+  flops_tenant_id: 1 # flops project id
+  flops_public_key_names: # name of ssh key uploaded to flops (https://panel.flops.ru/member/public-keys.html)
+    - user1
+    - user2
+    - user3
+
+  flops_api_key: encrypted_apikey_string
